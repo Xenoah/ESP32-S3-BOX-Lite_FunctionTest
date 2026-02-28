@@ -1,0 +1,2 @@
+dependencies:
+  espressif/esp-box-lite: "^2.0.4"

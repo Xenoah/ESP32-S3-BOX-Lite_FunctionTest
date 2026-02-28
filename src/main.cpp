@@ -7,10 +7,13 @@ constexpr uint16_t kScreenWidth = 320;
 constexpr uint16_t kScreenHeight = 240;
 
 constexpr uint16_t COLOR_BLACK = 0x0000;
+constexpr uint16_t COLOR_RED = 0xF800;
+constexpr uint16_t COLOR_GREEN = 0x07E0;
 constexpr uint16_t COLOR_WHITE = 0xFFFF;
 constexpr uint16_t COLOR_BLUE = 0x001F;
 constexpr uint16_t COLOR_CYAN = 0x07FF;
 constexpr uint16_t COLOR_YELLOW = 0xFFE0;
+constexpr uint8_t kBacklightOnLevel = LOW;
 
 SPIClass lcdSpi(FSPI);
 
@@ -62,6 +65,11 @@ void writeData(const uint8_t *data, size_t length) {
   digitalWrite(TFT_CS, LOW);
   lcdSpi.writeBytes(data, length);
   digitalWrite(TFT_CS, HIGH);
+}
+
+void writeCommandWithData(uint8_t command, const uint8_t *data, size_t length) {
+  writeCommand(command);
+  writeData(data, length);
 }
 
 void setAddressWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1) {
@@ -150,10 +158,10 @@ void initDisplay() {
 
   digitalWrite(TFT_CS, HIGH);
   digitalWrite(TFT_DC, HIGH);
-  digitalWrite(TFT_BL, HIGH);
+  digitalWrite(TFT_BL, !kBacklightOnLevel);
 
   lcdSpi.begin(TFT_CLK, TFT_MISO, TFT_MOSI, TFT_CS);
-  lcdSpi.beginTransaction(SPISettings(40000000, MSBFIRST, SPI_MODE0));
+  lcdSpi.beginTransaction(SPISettings(10000000, MSBFIRST, SPI_MODE0));
 
   digitalWrite(TFT_RST, HIGH);
   delay(50);
@@ -164,20 +172,60 @@ void initDisplay() {
 
   writeCommand(0x01);
   delay(150);
-  writeCommand(0x11);
-  delay(120);
 
-  writeCommand(0x3A);
-  writeDataByte(0x55);
+  const uint8_t porch[] = {0x0C, 0x0C, 0x00, 0x33, 0x33};
+  writeCommandWithData(0xB2, porch, sizeof(porch));
 
-  writeCommand(0x36);
-  writeDataByte(0x60);
+  const uint8_t gateCtrl[] = {0x35};
+  writeCommandWithData(0xB7, gateCtrl, sizeof(gateCtrl));
+
+  const uint8_t vcoms[] = {0x28};
+  writeCommandWithData(0xBB, vcoms, sizeof(vcoms));
+
+  const uint8_t lcmCtrl[] = {0x0C};
+  writeCommandWithData(0xC0, lcmCtrl, sizeof(lcmCtrl));
+
+  const uint8_t vdvVrhEn[] = {0x01, 0xFF};
+  writeCommandWithData(0xC2, vdvVrhEn, sizeof(vdvVrhEn));
+
+  const uint8_t vrhs[] = {0x10};
+  writeCommandWithData(0xC3, vrhs, sizeof(vrhs));
+
+  const uint8_t vdvs[] = {0x20};
+  writeCommandWithData(0xC4, vdvs, sizeof(vdvs));
+
+  const uint8_t frameRate[] = {0x0F};
+  writeCommandWithData(0xC6, frameRate, sizeof(frameRate));
+
+  const uint8_t powerCtrl[] = {0xA4, 0xA1};
+  writeCommandWithData(0xD0, powerCtrl, sizeof(powerCtrl));
+
+  const uint8_t positiveGamma[] = {
+      0xD0, 0x00, 0x02, 0x07, 0x0A, 0x28, 0x32, 0x44,
+      0x42, 0x06, 0x0E, 0x12, 0x14, 0x17,
+  };
+  writeCommandWithData(0xE0, positiveGamma, sizeof(positiveGamma));
+
+  const uint8_t negativeGamma[] = {
+      0xD0, 0x00, 0x02, 0x07, 0x0A, 0x28, 0x31, 0x54,
+      0x47, 0x0E, 0x1C, 0x17, 0x1B, 0x1E,
+  };
+  writeCommandWithData(0xE1, negativeGamma, sizeof(negativeGamma));
+
+  const uint8_t colorMode[] = {0x55};
+  writeCommandWithData(0x3A, colorMode, sizeof(colorMode));
+
+  const uint8_t madctl[] = {0xA0};
+  writeCommandWithData(0x36, madctl, sizeof(madctl));
 
   writeCommand(0x21);
-
+  writeCommand(0x11);
+  delay(120);
   writeCommand(0x13);
   writeCommand(0x29);
-  delay(20);
+  delay(50);
+
+  digitalWrite(TFT_BL, kBacklightOnLevel);
 }
 
 }  // namespace
@@ -189,6 +237,10 @@ void setup() {
 
   initDisplay();
 
+  fillScreen(COLOR_RED);
+  delay(250);
+  fillScreen(COLOR_GREEN);
+  delay(250);
   fillScreen(COLOR_BLUE);
   fillRect(20, 20, kScreenWidth - 40, kScreenHeight - 40, COLOR_BLACK);
   fillRect(30, 30, kScreenWidth - 60, 44, COLOR_CYAN);
