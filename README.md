@@ -1,6 +1,6 @@
-# ESP32S3BoxLite
+# esp32-s3-box-lite-easy
 
-ESP32-S3-BOX-Lite 用の Arduino ライブラリです。GitHub から ZIP をダウンロードして、そのまま Arduino IDE に追加できる構成です。
+ESP32-S3-BOX-Lite 用の使いやすさ重視 Arduino ライブラリです。GitHub から ZIP をダウンロードして、そのまま Arduino IDE に追加できる構成です。
 
 ## できること
 
